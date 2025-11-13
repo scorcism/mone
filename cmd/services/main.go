@@ -12,7 +12,7 @@ import (
 
 func Run() {
 	fmt.Printf("Service is running\n")
-	interfs := getLocalInterfaces()
+	interfs := GetLocalInterfaces()
 	for _, interf := range interfs {
 		fmt.Printf("Interface: %s :: %s\n", interf.Name, interf.Description)
 	}
@@ -98,7 +98,7 @@ func isLocalIP(ipStr string, localIps []net.IP) bool {
 	return false
 }
 
-func getLocalInterfaces() []types.LocalInterface {
+func GetLocalInterfaces() []types.LocalInterface {
 	interfs := []types.LocalInterface{}
 	devices, err := pcap.FindAllDevs()
 	if err != nil {

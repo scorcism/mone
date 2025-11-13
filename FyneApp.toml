@@ -1,0 +1,8 @@
+Website = "https://github.com/scorcism/mone"
+
+[Details]
+Icon = "mone.png"
+Name = "mone"
+ID = "github.com.scorcism.mone"
+Version = "1.0.0"
+Build = 1
