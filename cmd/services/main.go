@@ -10,46 +10,17 @@ import (
 	"github.com/scorcism/mone/cmd/types"
 )
 
-func Run() {
-	fmt.Printf("Service is running\n")
-	interfs := GetLocalInterfaces()
-	for _, interf := range interfs {
-		fmt.Printf("Interface: %s :: %s\n", interf.Name, interf.Description)
-	}
-
-	device := "\\Device\\NPF_{4C95BE1E-B86A-4CB9-AB63-095864C9E90B}"
-	snapshotlen := int32(65535)
-	promiscuous := true
-	timeout := pcap.BlockForever
-	handle, err := pcap.OpenLive(device, snapshotlen, promiscuous, timeout)
-	if err != nil {
-		fmt.Printf("Error opening device: %v\n", err)
-		return
-	}
-	defer handle.Close()
-
-	localIps := getLocalIps()
-	fmt.Printf("LocalIps: %v", localIps)
-
-	packets := gopacket.NewPacketSource(handle, handle.LinkType())
-	for packet := range packets.Packets() {
-		logPacketInfo(packet, localIps)
-		break
-	}
-}
-
-func logPacketInfo(packet gopacket.Packet, localIps []net.IP) {
+func LogPacketInfo(packet gopacket.Packet, localIps []net.IP) string {
 	netLayer := packet.NetworkLayer()
 	transLayer := packet.TransportLayer()
 
 	if netLayer == nil || transLayer == nil {
 		fmt.Println("No network or transport layer found in packet")
-		return
+		return ""
 	}
 	src := netLayer.NetworkFlow().Src().String()
 	dst := netLayer.NetworkFlow().Dst().String()
-	fmt.Printf("Network Layer: %s -> %s\n", src, dst)
-	// srcIP, dstIP := netLayer.NetworkFlow().Endpoints()
+	// fmt.Printf("Network Layer: %s -> %s\n", src, dst)
 	srcPort, dstPort := transLayer.TransportFlow().Endpoints()
 
 	direction := getDirection(src, dst, localIps)
@@ -58,10 +29,10 @@ func logPacketInfo(packet gopacket.Packet, localIps []net.IP) {
 
 	timestamp := packet.Metadata().Timestamp.Format(time.RFC3339)
 
-	fmt.Printf("Packet Info: [%s] %s | %s | %s:%s -> %s:%s | Size: %d bytes\n", timestamp, proto, direction, src, srcPort.String(), dst, dstPort.String(), size)
+	return fmt.Sprintf("[%s] %s | %s | %s:%s -> %s:%s | Size: %d bytes\n", timestamp, proto, direction, src, srcPort.String(), dst, dstPort.String(), size)
 }
 
-func getLocalIps() []net.IP {
+func GetLocalIps() []net.IP {
 	localIPs := []net.IP{}
 	addrs, _ := net.InterfaceAddrs()
 	for _, addr := range addrs {
@@ -75,7 +46,7 @@ func getLocalIps() []net.IP {
 }
 
 func getDirection(srcIP, dstIP string, localIps []net.IP) string {
-	fmt.Printf("Checking direction for SrcIP: %s, DstIP: %s\n", srcIP, dstIP)
+	// fmt.Printf("Checking direction for SrcIP: %s, DstIP: %s\n", srcIP, dstIP)
 	if isLocalIP(srcIP, localIps) && !isLocalIP(dstIP, localIps) {
 		return "OUTGOING"
 	}
