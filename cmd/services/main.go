@@ -10,13 +10,13 @@ import (
 	"github.com/scorcism/mone/cmd/types"
 )
 
-func LogPacketInfo(packet gopacket.Packet, localIps []net.IP) string {
+func LogPacketInfo(packet gopacket.Packet, localIps []net.IP) (string, string, string, string, string, string, string, int, gopacket.PacketMetadata) {
 	netLayer := packet.NetworkLayer()
 	transLayer := packet.TransportLayer()
 
 	if netLayer == nil || transLayer == nil {
 		fmt.Println("No network or transport layer found in packet")
-		return ""
+		return "", "", "", "", "", "", "", 0, gopacket.PacketMetadata{}
 	}
 	src := netLayer.NetworkFlow().Src().String()
 	dst := netLayer.NetworkFlow().Dst().String()
@@ -27,9 +27,10 @@ func LogPacketInfo(packet gopacket.Packet, localIps []net.IP) string {
 	proto := transLayer.LayerType().String()
 	size := len(packet.Data())
 
-	timestamp := packet.Metadata().Timestamp.Format(time.RFC3339)
+	timestamp := packet.Metadata().Timestamp.Local().Format(time.RFC3339)
+	metadata := packet.Metadata()
 
-	return fmt.Sprintf("[%s] %s | %s | %s:%s -> %s:%s | Size: %d bytes\n", timestamp, proto, direction, src, srcPort.String(), dst, dstPort.String(), size)
+	return timestamp, proto, direction, src, srcPort.String(), dst, dstPort.String(), size, *metadata
 }
 
 func GetLocalIps() []net.IP {
@@ -46,7 +47,6 @@ func GetLocalIps() []net.IP {
 }
 
 func getDirection(srcIP, dstIP string, localIps []net.IP) string {
-	// fmt.Printf("Checking direction for SrcIP: %s, DstIP: %s\n", srcIP, dstIP)
 	if isLocalIP(srcIP, localIps) && !isLocalIP(dstIP, localIps) {
 		return "OUTGOING"
 	}

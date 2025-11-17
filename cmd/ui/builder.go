@@ -3,6 +3,7 @@ package ui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -36,25 +37,16 @@ func BuildUI() {
 		w.Resize(fyne.NewSize(800, 600))
 	}
 
-	// selectedDevice, _ := selectedDeviceBinding.Get()
-	// fmt.Printf("Selected Device at start: %v\n", selectedDevice)
-
-	content := container.NewStack()
 	selectedDeviceBinding.AddListener(binding.NewDataListener(func() {
 		device, _ := selectedDeviceBinding.Get()
 		fmt.Printf("Device changed to: %v\n", device)
-		content.Objects = nil
 		if device == "" {
-			content.Add(screen1(w, selectedDeviceBinding))
+			w.SetContent(screen1(w, selectedDeviceBinding))
 		} else {
-			content.Add(screen2(a, w, selectedDeviceBinding))
+			w.SetContent(screen2(a, w, selectedDeviceBinding))
 		}
-		content.Refresh()
 	}))
 
-	// content := screen1(w, selectedDeviceBinding)
-
-	w.SetContent(content)
 	w.ShowAndRun()
 }
 
@@ -71,9 +63,7 @@ func screen1(win fyne.Window, selectedDeviceBinding binding.String) fyne.CanvasO
 		f := fmt.Sprintf("Device: %s :: Description: %s", interf.Name, interf.Description)
 		interfsDesc = append(interfsDesc, f)
 	}
-	// devices := []string{"Desktop", "Mobile", "Tablet"}
 	radio := widget.NewRadioGroup(interfsDesc, func(value string) {
-		// fmt.Println("Radio set to", value)
 		device = strings.Split(value, " :: ")[0][8:]
 	})
 
@@ -107,18 +97,19 @@ func screen2(a fyne.App, win fyne.Window, selectedDeviceBinding binding.String) 
 
 	startListenerBinding := binding.NewInt()
 	startListenerBinding.Set(0)
-	captureType := binding.NewString()
+	requestCountBinding := binding.NewInt()
+	requestCountBinding.Set(0)
+	captureTypeBinding := binding.NewString()
 
-	headerContainer := screen2Header(selectedDeviceBinding, startListenerBinding, captureType)
-	contentContainer := screen2Content(selectedDeviceBinding, startListenerBinding, captureType)
+	headerContainer := screen2Header(selectedDeviceBinding, startListenerBinding, captureTypeBinding, requestCountBinding)
+	contentContainer := screen2Content(selectedDeviceBinding, startListenerBinding, captureTypeBinding, requestCountBinding)
 
-	return container.NewVBox(
-		headerContainer,
-		contentContainer,
-	)
+	content := container.NewBorder(headerContainer, nil, nil, nil, container.NewVScroll(container.NewStack(contentContainer)))
+
+	return content
 }
 
-func screen2Content(selectedDeviceBinding binding.String, startListenerBinding binding.Int, captureType binding.String) fyne.CanvasObject {
+func screen2Content(selectedDeviceBinding binding.String, startListenerBinding binding.Int, captureType binding.String, requestCountBinding binding.Int) fyne.CanvasObject {
 	requests := binding.NewStringList()
 	device, _ := selectedDeviceBinding.Get()
 
@@ -144,9 +135,12 @@ func screen2Content(selectedDeviceBinding binding.String, startListenerBinding b
 			go func() {
 				packets := gopacket.NewPacketSource(handle, handle.LinkType())
 				for packet := range packets.Packets() {
-					l := services.LogPacketInfo(packet, localIps)
-					fmt.Println(l)
-					requests.Append(l)
+					timestamp, proto, direction, src, srcPort, dst, dstPort, size, metadata := services.LogPacketInfo(packet, localIps)
+					rItem := NewRequestItem(timestamp, proto, direction, src, srcPort, dst, dstPort, size, metadata)
+					content.Add(rItem.Container)
+					time.Sleep(1 * time.Millisecond)
+					currentRequestsCount, _ := requestCountBinding.Get()
+					requestCountBinding.Set(currentRequestsCount + 1)
 				}
 			}()
 		default:
@@ -171,49 +165,67 @@ func screen2Content(selectedDeviceBinding binding.String, startListenerBinding b
 
 	updateContent()
 
-	return container.NewVScroll(content)
+	return content
 }
 
-func screen2Header(selectedDeviceBinding binding.String, startListenerBinding binding.Int, captureType binding.String) fyne.CanvasObject {
-
+func screen2Header(selectedDeviceBinding binding.String, startListenerBinding binding.Int, captureTypeBinding binding.String, requestCountBinding binding.Int) fyne.CanvasObject {
 	// Incoming Button
 	ib := widget.NewButton("Incoming", func() {
-		fmt.Printf("Starting Incoming Capture...\n")
-		captureType.Set("INCOMING")
+		captureTypeBinding.Set("INCOMING")
 	})
 
 	// Outgoing Button
 	ob := widget.NewButton("Outgoing", func() {
-		fmt.Printf("Starting Outgoing Capture...\n")
-		captureType.Set("OUTGOING")
+		captureTypeBinding.Set("OUTGOING")
 	})
 	// Capture All Button
 	cb := widget.NewButton("Capture All", func() {
-		fmt.Printf("Starting Capture All...\n")
-		captureType.Set("BOTH")
+		captureTypeBinding.Set("BOTH")
 	})
+
+	c := widget.NewLabel("")
 
 	// Start Btn
 	sb := widget.NewButton("Start", func() {
-		fmt.Printf("Starting...\n")
 		startListenerBinding.Set(1)
 	})
+
 	// Stop
 	stb := widget.NewButton("Stop", func() {
-		fmt.Printf("Stopping...\n")
-		// Implement capture all logic here
 		startListenerBinding.Set(2)
 	})
 
-	captureType.AddListener(binding.NewDataListener(func() {
-		captureTypeValue, _ := captureType.Get()
-		fmt.Println("Capture type: ", captureTypeValue)
+	// Back
+	bb := widget.NewButton("Back", func() {
+		selectedDeviceBinding.Set("")
+	})
+
+	captureTypeBinding.AddListener(binding.NewDataListener(func() {
+		captureTypeValue, _ := captureTypeBinding.Get()
 		if captureTypeValue == "" {
 			sb.Disable()
 			stb.Disable()
 			return
 		} else {
 			sb.Enable()
+		}
+		switch captureTypeValue {
+		case "INCOMING":
+			ib.Importance = widget.HighImportance
+			ob.Importance = widget.LowImportance
+			cb.Importance = widget.LowImportance
+		case "OUTGOING":
+			ib.Importance = widget.LowImportance
+			ob.Importance = widget.HighImportance
+			cb.Importance = widget.LowImportance
+		case "BOTH":
+			ib.Importance = widget.LowImportance
+			ob.Importance = widget.LowImportance
+			cb.Importance = widget.HighImportance
+		default:
+			ib.Importance = widget.LowImportance
+			ob.Importance = widget.LowImportance
+			cb.Importance = widget.LowImportance
 		}
 	}))
 
@@ -232,10 +244,10 @@ func screen2Header(selectedDeviceBinding binding.String, startListenerBinding bi
 		}
 	}))
 
-	// Back
-	bb := widget.NewButton("Back", func() {
-		selectedDeviceBinding.Set("")
-	})
+	requestCountBinding.AddListener(binding.NewDataListener(func() {
+		count, _ := requestCountBinding.Get()
+		c.SetText(fmt.Sprintf("Requests: %d", count))
+	}))
 
 	lbg := container.NewHBox(
 		ib,
@@ -244,6 +256,7 @@ func screen2Header(selectedDeviceBinding binding.String, startListenerBinding bi
 	)
 
 	rbg := container.NewHBox(
+		c,
 		sb,
 		stb,
 		bb,
