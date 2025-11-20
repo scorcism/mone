@@ -53,6 +53,7 @@ func (ri *RequestItem) Build() fyne.CanvasObject {
 	content.Add(widget.NewLabel("->"))
 	content.Add(widget.NewLabel(ri.Dst + ":" + ri.DstPort))
 	content.Add(widget.NewLabel(fmt.Sprintf("Size: %d bytes", ri.Size)))
+	content.Resize(fyne.NewSize(100, 10))
 	return content
 }
 

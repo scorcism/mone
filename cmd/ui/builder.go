@@ -20,8 +20,6 @@ import (
 )
 
 func BuildUI() {
-	fmt.Printf("Builder is ONNNNNNNN")
-
 	a := app.NewWithID(utils.AppID)
 	w := a.NewWindow(utils.AppName)
 	isDesktop := false
@@ -90,7 +88,7 @@ func screen1(win fyne.Window, selectedDeviceBinding binding.String) fyne.CanvasO
 		bodyContent,
 	)
 
-	return mainContent
+	return container.New(layout.NewCenterLayout(), mainContent)
 }
 
 func screen2(a fyne.App, win fyne.Window, selectedDeviceBinding binding.String) fyne.CanvasObject {
@@ -110,7 +108,6 @@ func screen2(a fyne.App, win fyne.Window, selectedDeviceBinding binding.String) 
 }
 
 func screen2Content(selectedDeviceBinding binding.String, startListenerBinding binding.Int, captureType binding.String, requestCountBinding binding.Int) fyne.CanvasObject {
-	requests := binding.NewStringList()
 	device, _ := selectedDeviceBinding.Get()
 
 	snapshotlen := int32(65535)
@@ -122,8 +119,23 @@ func screen2Content(selectedDeviceBinding binding.String, startListenerBinding b
 	}
 
 	localIps := services.GetLocalIps()
-	fmt.Printf("LocalIps: %v", localIps)
-	content := container.NewVBox()
+	// content := container.NewVBox()
+	data := binding.NewUntypedList()
+
+	dataList := widget.NewListWithData(
+		data,
+		func() fyne.CanvasObject {
+			return container.New(nil)
+		},
+		func(item binding.DataItem, obj fyne.CanvasObject) {
+			raw, _ := item.(binding.Untyped).Get()
+
+			cnt := raw.(*fyne.Container)
+			row := obj.(*fyne.Container)
+			row.Objects = nil
+			row.Add(cnt)
+		},
+	)
 
 	startListenerBinding.AddListener(binding.NewDataListener(func() {
 		mode, _ := startListenerBinding.Get()
@@ -137,7 +149,7 @@ func screen2Content(selectedDeviceBinding binding.String, startListenerBinding b
 				for packet := range packets.Packets() {
 					timestamp, proto, direction, src, srcPort, dst, dstPort, size, metadata := services.LogPacketInfo(packet, localIps)
 					rItem := NewRequestItem(timestamp, proto, direction, src, srcPort, dst, dstPort, size, metadata)
-					content.Add(rItem.Container)
+					data.Append(rItem.Container)
 					time.Sleep(1 * time.Millisecond)
 					currentRequestsCount, _ := requestCountBinding.Get()
 					requestCountBinding.Set(currentRequestsCount + 1)
@@ -150,25 +162,29 @@ func screen2Content(selectedDeviceBinding binding.String, startListenerBinding b
 		}
 	}))
 
-	updateContent := func() {
-		requestsList, _ := requests.Get()
-		content.Objects = nil
-		for _, r := range requestsList {
-			content.Add(widget.NewLabel(r))
-		}
-		content.Refresh()
-	}
+	// updateContent := func() {
+	// 	requestsList, _ := requests.Get()
+	// 	content.Objects = nil
+	// 	for _, r := range requestsList {
+	// 		content.Add(widget.NewLabel(r))
+	// 	}
+	// 	content.Refresh()
+	// }
 
-	requests.AddListener(binding.NewDataListener(func() {
-		updateContent()
-	}))
+	// requests.AddListener(binding.NewDataListener(func() {
+	// 	updateContent()
+	// }))
 
-	updateContent()
+	// updateContent()
 
-	return content
+	return dataList
 }
 
 func screen2Header(selectedDeviceBinding binding.String, startListenerBinding binding.Int, captureTypeBinding binding.String, requestCountBinding binding.Int) fyne.CanvasObject {
+
+	// memBinding := binding.NewString()
+	// cpuBinding := binding.NewString()
+
 	// Incoming Button
 	ib := widget.NewButton("Incoming", func() {
 		captureTypeBinding.Set("INCOMING")
@@ -261,6 +277,15 @@ func screen2Header(selectedDeviceBinding binding.String, startListenerBinding bi
 		stb,
 		bb,
 	)
+
+	// go func() {
+	// 	for {
+	// 		memUsage, cpuUsage := utils.GetSystemStat()
+	// 		memBinding.Set(fmt.Sprintf("Mem: %s", memUsage))
+	// 		cpuBinding.Set(fmt.Sprintf("CPU: %s", cpuUsage))
+	// 		time.Sleep(2 * time.Second)
+	// 	}
+	// }()
 
 	// Header
 	header := container.NewBorder(nil, nil, nil, nil, container.NewHBox(lbg, layout.NewSpacer(), rbg))

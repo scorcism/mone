@@ -8,6 +8,5 @@ import (
 
 func main() {
 	fmt.Println("Welcome to mone!")
-	// services.Run()
 	ui.BuildUI()
 }
