@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/driver/desktop"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/pcap"
@@ -32,6 +34,19 @@ func BuildUI() {
 
 	if isDesktop {
 		fmt.Printf("Running on Desktop Environment\n")
+		m := fyne.NewMenu("Mone",
+			fyne.NewMenuItem("Open Mone", func() {
+				w.Show()
+			}),
+			fyne.NewMenuItemSeparator(),
+			fyne.NewMenuItem("About Mone", func() {
+				showInfoWindow()
+			}),
+			fyne.NewMenuItem("Quit", func() {
+				a.Quit()
+			}),
+		)
+		ok.SetSystemTrayMenu(m)
 		w.Resize(fyne.NewSize(800, 600))
 	}
 
@@ -41,10 +56,13 @@ func BuildUI() {
 		if device == "" {
 			w.SetContent(screen1(w, selectedDeviceBinding))
 		} else {
-			w.SetContent(screen2(a, w, selectedDeviceBinding))
+			w.SetContent(screen2(selectedDeviceBinding))
 		}
 	}))
 
+	w.SetCloseIntercept(func() {
+		w.Hide()
+	})
 	w.ShowAndRun()
 }
 
@@ -73,8 +91,19 @@ func screen1(win fyne.Window, selectedDeviceBinding binding.String) fyne.CanvasO
 		selectedDeviceBinding.Set(device)
 	})
 
+	// More info btn
+	moreInfoBtn := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
+		showInfoWindow()
+	})
+
+	exitBtn := widget.NewButton("Exit", func() {
+		win.Close()
+	})
+
 	confirmICont := container.NewHBox(
 		confirmBtn,
+		exitBtn,
+		moreInfoBtn,
 	)
 
 	bodyContent := container.NewVBox(
@@ -91,7 +120,7 @@ func screen1(win fyne.Window, selectedDeviceBinding binding.String) fyne.CanvasO
 	return container.New(layout.NewCenterLayout(), mainContent)
 }
 
-func screen2(a fyne.App, win fyne.Window, selectedDeviceBinding binding.String) fyne.CanvasObject {
+func screen2(selectedDeviceBinding binding.String) fyne.CanvasObject {
 
 	startListenerBinding := binding.NewInt()
 	startListenerBinding.Set(0)
@@ -102,7 +131,7 @@ func screen2(a fyne.App, win fyne.Window, selectedDeviceBinding binding.String) 
 	headerContainer := screen2Header(selectedDeviceBinding, startListenerBinding, captureTypeBinding, requestCountBinding)
 	contentContainer := screen2Content(selectedDeviceBinding, startListenerBinding, captureTypeBinding, requestCountBinding)
 
-	content := container.NewBorder(headerContainer, nil, nil, nil, container.NewVScroll(container.NewStack(contentContainer)))
+	content := container.NewBorder(headerContainer, nil, nil, nil, container.NewVScroll(contentContainer))
 
 	return content
 }
@@ -110,6 +139,10 @@ func screen2(a fyne.App, win fyne.Window, selectedDeviceBinding binding.String) 
 func screen2Content(selectedDeviceBinding binding.String, startListenerBinding binding.Int, captureType binding.String, requestCountBinding binding.Int) fyne.CanvasObject {
 	device, _ := selectedDeviceBinding.Get()
 
+	requestCaptureRulesBinding := binding.NewString()
+	requestCaptureRulesBinding.Set("")
+
+	hostIps := services.GetLocalIps()
 	snapshotlen := int32(65535)
 	promiscuous := true
 	timeout := pcap.BlockForever
@@ -119,7 +152,6 @@ func screen2Content(selectedDeviceBinding binding.String, startListenerBinding b
 	}
 
 	localIps := services.GetLocalIps()
-	// content := container.NewVBox()
 	data := binding.NewUntypedList()
 
 	dataList := widget.NewListWithData(
@@ -141,7 +173,7 @@ func screen2Content(selectedDeviceBinding binding.String, startListenerBinding b
 		mode, _ := startListenerBinding.Get()
 		switch mode {
 		case 0:
-			// Do nothing
+			// Nothing is selected
 		case 1:
 			fmt.Printf("Started Listening on device: %s\n", device)
 			go func() {
@@ -162,42 +194,61 @@ func screen2Content(selectedDeviceBinding binding.String, startListenerBinding b
 		}
 	}))
 
-	// updateContent := func() {
-	// 	requestsList, _ := requests.Get()
-	// 	content.Objects = nil
-	// 	for _, r := range requestsList {
-	// 		content.Add(widget.NewLabel(r))
-	// 	}
-	// 	content.Refresh()
-	// }
+	captureType.AddListener(binding.NewDataListener(func() {
+		value, _ := captureType.Get()
+		filters := ""
 
-	// requests.AddListener(binding.NewDataListener(func() {
-	// 	updateContent()
-	// }))
-
-	// updateContent()
+		switch value {
+		case "INCOMING":
+			for i, ip := range hostIps {
+				if i > 0 {
+					filters += " or "
+				}
+				filters += "dst host " + ip.String()
+			}
+			handle.SetBPFFilter(filters)
+		case "OUTGOING":
+			for i, ip := range hostIps {
+				if i > 0 {
+					filters += " or "
+				}
+				filters += "src host " + ip.String()
+			}
+			handle.SetBPFFilter(filters)
+		case "BOTH":
+			filters = ""
+			handle.SetBPFFilter(filters)
+		default:
+			filters = ""
+			handle.SetBPFFilter(filters)
+		}
+	}))
 
 	return dataList
 }
 
-func screen2Header(selectedDeviceBinding binding.String, startListenerBinding binding.Int, captureTypeBinding binding.String, requestCountBinding binding.Int) fyne.CanvasObject {
-
-	// memBinding := binding.NewString()
-	// cpuBinding := binding.NewString()
+func screen2Header(selectedDeviceBinding binding.String,
+	startListenerBinding binding.Int,
+	captureTypeBinding binding.String,
+	requestCountBinding binding.Int) fyne.CanvasObject {
 
 	// Incoming Button
 	ib := widget.NewButton("Incoming", func() {
 		captureTypeBinding.Set("INCOMING")
 	})
+	ib.Importance = widget.LowImportance
 
 	// Outgoing Button
 	ob := widget.NewButton("Outgoing", func() {
 		captureTypeBinding.Set("OUTGOING")
 	})
+	ob.Importance = widget.LowImportance
+
 	// Capture All Button
 	cb := widget.NewButton("Capture All", func() {
 		captureTypeBinding.Set("BOTH")
 	})
+	cb.Importance = widget.LowImportance
 
 	c := widget.NewLabel("")
 
@@ -231,17 +282,15 @@ func screen2Header(selectedDeviceBinding binding.String, startListenerBinding bi
 			ob.Importance = widget.LowImportance
 			cb.Importance = widget.LowImportance
 		case "OUTGOING":
-			ib.Importance = widget.LowImportance
 			ob.Importance = widget.HighImportance
+			ib.Importance = widget.LowImportance
 			cb.Importance = widget.LowImportance
 		case "BOTH":
-			ib.Importance = widget.LowImportance
-			ob.Importance = widget.LowImportance
 			cb.Importance = widget.HighImportance
-		default:
 			ib.Importance = widget.LowImportance
 			ob.Importance = widget.LowImportance
-			cb.Importance = widget.LowImportance
+		default:
+
 		}
 	}))
 
@@ -278,16 +327,31 @@ func screen2Header(selectedDeviceBinding binding.String, startListenerBinding bi
 		bb,
 	)
 
-	// go func() {
-	// 	for {
-	// 		memUsage, cpuUsage := utils.GetSystemStat()
-	// 		memBinding.Set(fmt.Sprintf("Mem: %s", memUsage))
-	// 		cpuBinding.Set(fmt.Sprintf("CPU: %s", cpuUsage))
-	// 		time.Sleep(2 * time.Second)
-	// 	}
-	// }()
-
 	// Header
 	header := container.NewBorder(nil, nil, nil, nil, container.NewHBox(lbg, layout.NewSpacer(), rbg))
 	return header
+}
+
+func showInfoWindow() {
+	a := fyne.CurrentApp()
+	win := a.NewWindow("About Mone")
+	title := widget.NewLabelWithStyle("Mone - Network Packet Analyzer", fyne.TextAlignCenter, fyne.TextStyle{Bold: true, Italic: false})
+	description := widget.NewLabel(utils.Description)
+	description.Wrapping = fyne.TextWrapWord
+	version := widget.NewLabel(fmt.Sprintf("Version: %s", utils.Version))
+	developer := widget.NewLabel(fmt.Sprintf("Developer: %s", utils.Developer))
+	u, _ := url.Parse(utils.GitHub)
+	github := widget.NewHyperlink(fmt.Sprintf("GitHub: %s", utils.GitHub), u)
+	content := container.NewVBox(
+		title,
+		widget.NewSeparator(),
+		description,
+		version,
+		developer,
+		github,
+	)
+
+	win.SetContent(content)
+	win.Resize(fyne.NewSize(400, 300))
+	win.Show()
 }

@@ -46,14 +46,9 @@ func (ri *RequestItem) Build() fyne.CanvasObject {
 		ri.showMetadataWindow()
 	})
 	content.Add(btn)
-	content.Add(widget.NewLabel(fmt.Sprintf("[%s]", ri.Timestamp)))
-	content.Add(widget.NewLabel(ri.Proto))
-	content.Add(widget.NewLabel(ri.Direction))
-	content.Add(widget.NewLabel(ri.Src + ":" + ri.SrcPort))
-	content.Add(widget.NewLabel("->"))
-	content.Add(widget.NewLabel(ri.Dst + ":" + ri.DstPort))
-	content.Add(widget.NewLabel(fmt.Sprintf("Size: %d bytes", ri.Size)))
-	content.Resize(fyne.NewSize(100, 10))
+	r := widget.NewLabel(fmt.Sprintf("[%s] %s %s:%s -> %s:%s Size: %d bytes", ri.Timestamp, ri.Proto, ri.Src, ri.SrcPort, ri.Dst, ri.DstPort, ri.Size))
+	fmt.Printf("Request: %v\n", r.Text)
+	content.Add(r)
 	return content
 }
 

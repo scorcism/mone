@@ -7,7 +7,6 @@ toolchain go1.24.10
 require (
 	fyne.io/fyne/v2 v2.7.0
 	github.com/google/gopacket v1.1.19
-	github.com/shirou/gopsutil v3.21.11+incompatible
 )
 
 require (
