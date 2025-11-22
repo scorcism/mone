@@ -186,7 +186,6 @@ func screen2Content(selectedDeviceBinding binding.String, startListenerBinding b
 			}()
 		default:
 			// Stop Listening
-			fmt.Printf("Stopped Listening on device: %s\n", device)
 			handle.Close()
 		}
 	}))
