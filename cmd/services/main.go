@@ -1,7 +1,6 @@
 package services
 
 import (
-	"fmt"
 	"net"
 	"time"
 
@@ -15,12 +14,10 @@ func LogPacketInfo(packet gopacket.Packet, localIps []net.IP) (string, string, s
 	transLayer := packet.TransportLayer()
 
 	if netLayer == nil || transLayer == nil {
-		fmt.Println("No network or transport layer found in packet")
 		return "", "", "", "", "", "", "", 0, gopacket.PacketMetadata{}
 	}
 	src := netLayer.NetworkFlow().Src().String()
 	dst := netLayer.NetworkFlow().Dst().String()
-	// fmt.Printf("Network Layer: %s -> %s\n", src, dst)
 	srcPort, dstPort := transLayer.TransportFlow().Endpoints()
 
 	direction := getDirection(src, dst, localIps)
@@ -73,7 +70,6 @@ func GetLocalInterfaces() []types.LocalInterface {
 	interfs := []types.LocalInterface{}
 	devices, err := pcap.FindAllDevs()
 	if err != nil {
-		fmt.Printf("Error finding devices: %v\n", err)
 		return nil
 	}
 

@@ -33,7 +33,6 @@ func BuildUI() {
 	}
 
 	if isDesktop {
-		fmt.Printf("Running on Desktop Environment\n")
 		m := fyne.NewMenu("Mone",
 			fyne.NewMenuItem("Open Mone", func() {
 				w.Show()
@@ -52,7 +51,6 @@ func BuildUI() {
 
 	selectedDeviceBinding.AddListener(binding.NewDataListener(func() {
 		device, _ := selectedDeviceBinding.Get()
-		fmt.Printf("Device changed to: %v\n", device)
 		if device == "" {
 			w.SetContent(screen1(w, selectedDeviceBinding))
 		} else {
@@ -175,7 +173,6 @@ func screen2Content(selectedDeviceBinding binding.String, startListenerBinding b
 		case 0:
 			// Nothing is selected
 		case 1:
-			fmt.Printf("Started Listening on device: %s\n", device)
 			go func() {
 				packets := gopacket.NewPacketSource(handle, handle.LinkType())
 				for packet := range packets.Packets() {

@@ -47,7 +47,6 @@ func (ri *RequestItem) Build() fyne.CanvasObject {
 	})
 	content.Add(btn)
 	r := widget.NewLabel(fmt.Sprintf("[%s] %s %s:%s -> %s:%s Size: %d bytes", ri.Timestamp, ri.Proto, ri.Src, ri.SrcPort, ri.Dst, ri.DstPort, ri.Size))
-	fmt.Printf("Request: %v\n", r.Text)
 	content.Add(r)
 	return content
 }
