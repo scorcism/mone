@@ -46,9 +46,9 @@ func (ri *RequestItem) showMetadataWindow() {
 	win := app.NewWindow("Request Metadata")
 
 	sp, _ := strconv.ParseInt(ri.SrcPort, 10, 32)
-	sourceAppInfo := utils.GetServiceByPort(uint32(i))
+	sourceAppInfo := utils.GetServiceByPort(uint32(sp))
 	dp, _ := strconv.ParseInt(ri.DstPort, 10, 32)
-	desAppInfo := utils.GetServiceByPort(uint32(j))
+	desAppInfo := utils.GetServiceByPort(uint32(dp))
 
 	meta := ri.Metadata
 	capture := meta.CaptureInfo
