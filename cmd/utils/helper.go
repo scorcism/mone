@@ -1,31 +1,55 @@
 package utils
 
 import (
-	"fmt"
-
-	"github.com/shirou/gopsutil/v4/cpu"
-	"github.com/shirou/gopsutil/v4/mem"
+	"github.com/likexian/whois"
+	"github.com/shirou/gopsutil/v4/net"
+	"github.com/shirou/gopsutil/v4/process"
 )
 
-func GetSystemStat() (string, string) {
-	var memUsage string
-	var cpuUsage string
-
-	// Memory usage
-	v, err := mem.VirtualMemory()
+func PerformWhoisLookup(ip string) (string, error) {
+	res, err := whois.Whois(ip)
 	if err != nil {
-		memUsage = "~"
-	} else {
-		memUsage = fmt.Sprintf("%.2f%%", v.UsedPercent)
+		return "", err
+	}
+	return res, nil
+}
+
+func GetServiceByPort(port uint32) string {
+	pid := FindPIDByPort(port)
+	if pid == -1 {
+		return "Unknown Service"
 	}
 
-	// CPU usage
-	cpuPercent, err := cpu.Percent(0, false)
+	proc, err := process.NewProcess(pid)
+
 	if err != nil {
-		cpuUsage = "~"
-	} else {
-		cpuUsage = fmt.Sprintf("%.2f%%", cpuPercent[0])
+		return "Unknown Service"
 	}
 
-	return memUsage, cpuUsage
+	name, _ := proc.Name()
+	exe, _ := proc.Exe()
+	username, _ := proc.Username()
+
+	info := "Process Name: " + name + "\n"
+	info += "Executable Path: " + exe + "\n"
+	info += "User: " + username + "\n"
+	return info
+}
+
+func FindPIDByPort(port uint32) int32 {
+	conns, _ := net.Connections("tcp")
+	for _, conn := range conns {
+		if conn.Laddr.Port == port {
+			return conn.Pid
+		}
+	}
+
+	udpConns, _ := net.Connections("udp")
+	for _, conn := range udpConns {
+		if conn.Laddr.Port == port {
+			return conn.Pid
+		}
+	}
+
+	return -1
 }

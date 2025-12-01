@@ -155,15 +155,28 @@ func screen2Content(selectedDeviceBinding binding.String, startListenerBinding b
 	dataList := widget.NewListWithData(
 		data,
 		func() fyne.CanvasObject {
-			return container.New(nil)
+			btn := widget.NewButtonWithIcon("", theme.InfoIcon(), nil)
+			label := widget.NewLabel("")
+			return container.NewHBox(btn, label)
 		},
 		func(item binding.DataItem, obj fyne.CanvasObject) {
 			raw, _ := item.(binding.Untyped).Get()
+			rItem := raw.(*RequestItem)
 
-			cnt := raw.(*fyne.Container)
 			row := obj.(*fyne.Container)
-			row.Objects = nil
-			row.Add(cnt)
+			btn := row.Objects[0].(*widget.Button)
+			label := row.Objects[1].(*widget.Label)
+
+			btn.OnTapped = func() {
+				rItem.showMetadataWindow()
+			}
+			// If size is < 1 then ignore update
+			if rItem.Size < 1 {
+				return
+			}
+			label.SetText(fmt.Sprintf("[%s] [%s] %s %s:%s -> %s:%s Size: %d bytes",
+				rItem.Timestamp, rItem.Direction, rItem.Proto, rItem.Src, rItem.SrcPort,
+				rItem.Dst, rItem.DstPort, rItem.Size))
 		},
 	)
 
@@ -178,7 +191,7 @@ func screen2Content(selectedDeviceBinding binding.String, startListenerBinding b
 				for packet := range packets.Packets() {
 					timestamp, proto, direction, src, srcPort, dst, dstPort, size, metadata := services.LogPacketInfo(packet, localIps)
 					rItem := NewRequestItem(timestamp, proto, direction, src, srcPort, dst, dstPort, size, metadata)
-					data.Append(rItem.Container)
+					data.Append(rItem)
 					time.Sleep(1 * time.Millisecond)
 					currentRequestsCount, _ := requestCountBinding.Get()
 					requestCountBinding.Set(currentRequestsCount + 1)
