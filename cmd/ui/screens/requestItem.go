@@ -1,4 +1,4 @@
-package ui
+package screens
 
 import (
 	"fmt"
@@ -40,7 +40,8 @@ func NewRequestItem(timestamp, proto, direction, src, srcPort, dst, dstPort stri
 	}
 	return item
 }
-func (ri *RequestItem) showMetadataWindow() {
+
+func (ri *RequestItem) ShowMetadataWindow() {
 	app := fyne.CurrentApp()
 	win := app.NewWindow("Request Metadata")
 

@@ -2,6 +2,7 @@ package services
 
 import (
 	"net"
+	"slices"
 	"time"
 
 	"github.com/google/gopacket"
@@ -58,12 +59,7 @@ func isLocalIP(ipStr string, localIps []net.IP) bool {
 	if ip == nil {
 		return false
 	}
-	for _, localIP := range localIps {
-		if ip.Equal(localIP) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(localIps, ip.Equal)
 }
 
 func GetLocalInterfaces() []types.LocalInterface {
