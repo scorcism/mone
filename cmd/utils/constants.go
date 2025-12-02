@@ -2,7 +2,7 @@ package utils
 
 const (
 	AppName     = "mone"
-	Version     = "0.0.1"
+	Version     = "1.0.0"
 	AppID       = "github.com/scorcism/mone"
 	About       = "Mone - Network Packet Analyzer"
 	Description = "A simple network packet analyzer built with Go and Fyne."

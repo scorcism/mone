@@ -7,7 +7,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"github.com/google/gopacket"
 	"github.com/scorcism/mone/cmd/utils"
@@ -44,6 +43,12 @@ func NewRequestItem(timestamp, proto, direction, src, srcPort, dst, dstPort stri
 func (ri *RequestItem) showMetadataWindow() {
 	app := fyne.CurrentApp()
 	win := app.NewWindow("Request Metadata")
+
+	sourceWhoIsBinding := binding.NewString()
+	destinationWhoIsBinding := binding.NewString()
+
+	sourceWhoIsBinding.Set("Fetching WHOIS information...")
+	destinationWhoIsBinding.Set("Fetching WHOIS information...")
 
 	sp, _ := strconv.ParseInt(ri.SrcPort, 10, 32)
 	sourceAppInfo := utils.GetServiceByPort(uint32(sp))
@@ -94,13 +99,32 @@ func (ri *RequestItem) showMetadataWindow() {
 		widget.NewAccordionItem("Full Metadata (Raw)", widget.NewLabel(fmt.Sprintf("%+v", meta))),
 	)
 
-	srcBtn := widget.NewButtonWithIcon("Source WHOIS Lookup", theme.InfoIcon(), func() {
-		ri.ShowWhoIsWindow(ri.Src)
-	})
+	sourceWhoIsLbl := widget.NewLabelWithStyle("Source WHOIS Lookup", fyne.TextAlignCenter, fyne.TextStyle{Bold: true, Monospace: true})
+	destinationWhoIsLbl := widget.NewLabelWithStyle("Destination WHOIS Lookup", fyne.TextAlignCenter, fyne.TextStyle{Bold: true, Monospace: true})
 
-	dstBtn := widget.NewButtonWithIcon("Destination WHOIS Lookup", theme.InfoIcon(), func() {
-		ri.ShowWhoIsWindow(ri.Dst)
-	})
+	go func() {
+		info, err := utils.PerformWhoisLookup(ri.Src)
+		infoDst, errDst := utils.PerformWhoisLookup(ri.Dst)
+
+		if err != nil {
+			sourceWhoIsBinding.Set(fmt.Sprintf("Error fetching WHOIS: %v", err))
+		} else {
+			sourceWhoIsBinding.Set(fmt.Sprintf("Raw WHOIS Output:\n\n%s", info))
+		}
+
+		if errDst != nil {
+			destinationWhoIsBinding.Set(fmt.Sprintf("Error fetching WHOIS: %v", errDst))
+		} else {
+			destinationWhoIsBinding.Set(fmt.Sprintf("Raw WHOIS Output:\n\n%s", infoDst))
+		}
+	}()
+
+	whoIsContentSrc := container.NewVBox(
+		sourceWhoIsLbl,
+		widget.NewLabelWithData(sourceWhoIsBinding),
+		destinationWhoIsLbl,
+		widget.NewLabelWithData(destinationWhoIsBinding),
+	)
 
 	content := container.NewVBox(
 		widget.NewLabelWithStyle("Request Metadata", fyne.TextAlignCenter, fyne.TextStyle{Bold: true}),
@@ -108,40 +132,12 @@ func (ri *RequestItem) showMetadataWindow() {
 		portAppInfo,
 		captureInfo,
 		fullMeta,
-		srcBtn,
-		dstBtn,
+		whoIsContentSrc,
 	)
 
 	scroll := container.NewVScroll(content)
 
 	win.SetContent(scroll)
 	win.Resize(fyne.NewSize(400, 450))
-	win.Show()
-}
-
-func (ri *RequestItem) ShowWhoIsWindow(ip string) {
-	app := fyne.CurrentApp()
-	win := app.NewWindow(fmt.Sprintf("WHOIS: %s", ip))
-	infoBinding := binding.NewString()
-
-	title := widget.NewLabelWithStyle(
-		fmt.Sprintf("WHOIS Information for: %s", ip),
-		fyne.TextAlignLeading,
-		fyne.TextStyle{Bold: true},
-	)
-
-	info, err := utils.PerformWhoisLookup(ip)
-
-	if err != nil {
-		infoBinding.Set(fmt.Sprintf("Error fetching WHOIS: %v", err))
-	} else {
-		infoBinding.Set(fmt.Sprintf("Raw WHOIS Output:\n\n%s", info))
-	}
-
-	l := widget.NewLabelWithData(infoBinding)
-	scroll := container.NewScroll(container.NewVBox(title, l))
-
-	win.SetContent(scroll)
-	win.Resize(fyne.NewSize(600, 400))
 	win.Show()
 }
