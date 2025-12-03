@@ -67,9 +67,14 @@ func Body(selectedDeviceBinding binding.String, startListenerBinding binding.Int
 			btn.OnTapped = func() {
 				rItem.ShowMetadataWindow()
 			}
-			label.SetText(fmt.Sprintf("[%s] [%s] %s %s:%s -> %s:%s Size: %d bytes",
-				rItem.Timestamp, rItem.Direction, rItem.Proto, rItem.Src, rItem.SrcPort,
-				rItem.Dst, rItem.DstPort, rItem.Size))
+			if rItem.Size < 1 {
+				btn.Disable()
+				label.SetText("(No Data Captured)")
+			} else {
+				label.SetText(fmt.Sprintf("[%s] [%s] %s %s:%s -> %s:%s Size: %d bytes",
+					rItem.Timestamp, rItem.Direction, rItem.Proto, rItem.Src, rItem.SrcPort,
+					rItem.Dst, rItem.DstPort, rItem.Size))
+			}
 		},
 	)
 
