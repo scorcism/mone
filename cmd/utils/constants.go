@@ -7,5 +7,5 @@ const (
 	About       = "Mone - Network Packet Analyzer"
 	Description = "A simple network packet analyzer built with Go and Fyne."
 	GitHub      = "https://github.com/scorcism/mone"
-	Developer   = "Abhishek Pathak aka scorcism"
+	Developer   = "Abhishek Pathak aka scor32k"
 )

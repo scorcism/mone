@@ -24,14 +24,14 @@ func Screen2(selectedDeviceBinding binding.String) fyne.CanvasObject {
 	captureTypeBinding := binding.NewString()
 
 	headerContainer := Header(selectedDeviceBinding, startListenerBinding, captureTypeBinding, requestCountBinding)
-	contentContainer := Content(selectedDeviceBinding, startListenerBinding, captureTypeBinding, requestCountBinding)
+	contentContainer := Body(selectedDeviceBinding, startListenerBinding, captureTypeBinding, requestCountBinding)
 
 	content := container.NewBorder(headerContainer, nil, nil, nil, container.NewVScroll(contentContainer))
 
 	return content
 }
 
-func Content(selectedDeviceBinding binding.String, startListenerBinding binding.Int, captureType binding.String, requestCountBinding binding.Int) fyne.CanvasObject {
+func Body(selectedDeviceBinding binding.String, startListenerBinding binding.Int, captureType binding.String, requestCountBinding binding.Int) fyne.CanvasObject {
 	device, _ := selectedDeviceBinding.Get()
 
 	requestCaptureRulesBinding := binding.NewString()
@@ -67,10 +67,6 @@ func Content(selectedDeviceBinding binding.String, startListenerBinding binding.
 			btn.OnTapped = func() {
 				rItem.ShowMetadataWindow()
 			}
-			// If size is < 1 then ignore update
-			if rItem.Size < 1 {
-				return
-			}
 			label.SetText(fmt.Sprintf("[%s] [%s] %s %s:%s -> %s:%s Size: %d bytes",
 				rItem.Timestamp, rItem.Direction, rItem.Proto, rItem.Src, rItem.SrcPort,
 				rItem.Dst, rItem.DstPort, rItem.Size))
@@ -86,7 +82,7 @@ func Content(selectedDeviceBinding binding.String, startListenerBinding binding.
 			go func() {
 				packets := gopacket.NewPacketSource(handle, handle.LinkType())
 				for packet := range packets.Packets() {
-					timestamp, proto, direction, src, srcPort, dst, dstPort, size, metadata := services.LogPacketInfo(packet, localIps)
+					timestamp, proto, direction, src, srcPort, dst, dstPort, size, metadata := services.PacketInfo(packet, localIps)
 					rItem := NewRequestItem(timestamp, proto, direction, src, srcPort, dst, dstPort, size, metadata)
 					data.Append(rItem)
 					time.Sleep(1 * time.Millisecond)
@@ -138,63 +134,60 @@ func Header(selectedDeviceBinding binding.String,
 	captureTypeBinding binding.String,
 	requestCountBinding binding.Int) fyne.CanvasObject {
 
-	// Incoming Button
-	ib := widget.NewButton("Incoming", func() {
-		captureTypeBinding.Set("INCOMING")
-	})
-	ib.Importance = widget.LowImportance
-
-	// Outgoing Button
-	ob := widget.NewButton("Outgoing", func() {
-		captureTypeBinding.Set("OUTGOING")
-	})
-	ob.Importance = widget.LowImportance
-
-	// Capture All Button
-	cb := widget.NewButton("Capture All", func() {
-		captureTypeBinding.Set("BOTH")
-	})
-	cb.Importance = widget.LowImportance
-
 	c := widget.NewLabel("")
 
+	// Incoming Button
+	incomingBtn := widget.NewButton("Incoming", func() {
+		captureTypeBinding.Set("INCOMING")
+	})
+	// Outgoing Button
+	outgoingBtn := widget.NewButton("Outgoing", func() {
+		captureTypeBinding.Set("OUTGOING")
+	})
+	// Capture All Button
+	captureAllBtn := widget.NewButton("Capture All", func() {
+		captureTypeBinding.Set("BOTH")
+	})
+
+	incomingBtn.Importance = widget.LowImportance
+	outgoingBtn.Importance = widget.LowImportance
+	captureAllBtn.Importance = widget.LowImportance
+
 	// Start Btn
-	sb := widget.NewButton("Start", func() {
+	startBtn := widget.NewButton("Start", func() {
 		startListenerBinding.Set(1)
 	})
-
 	// Stop
-	stb := widget.NewButton("Stop", func() {
+	stopBtn := widget.NewButton("Stop", func() {
 		startListenerBinding.Set(2)
 	})
-
 	// Back
-	bb := widget.NewButton("Back", func() {
+	backBtn := widget.NewButton("Back", func() {
 		selectedDeviceBinding.Set("")
 	})
 
 	captureTypeBinding.AddListener(binding.NewDataListener(func() {
 		captureTypeValue, _ := captureTypeBinding.Get()
 		if captureTypeValue == "" {
-			sb.Disable()
-			stb.Disable()
+			startBtn.Disable()
+			stopBtn.Disable()
 			return
 		} else {
-			sb.Enable()
+			startBtn.Enable()
 		}
 		switch captureTypeValue {
 		case "INCOMING":
-			ib.Importance = widget.HighImportance
-			ob.Importance = widget.LowImportance
-			cb.Importance = widget.LowImportance
+			incomingBtn.Importance = widget.HighImportance
+			outgoingBtn.Importance = widget.LowImportance
+			captureAllBtn.Importance = widget.LowImportance
 		case "OUTGOING":
-			ob.Importance = widget.HighImportance
-			ib.Importance = widget.LowImportance
-			cb.Importance = widget.LowImportance
+			outgoingBtn.Importance = widget.HighImportance
+			incomingBtn.Importance = widget.LowImportance
+			captureAllBtn.Importance = widget.LowImportance
 		case "BOTH":
-			cb.Importance = widget.HighImportance
-			ib.Importance = widget.LowImportance
-			ob.Importance = widget.LowImportance
+			captureAllBtn.Importance = widget.HighImportance
+			incomingBtn.Importance = widget.LowImportance
+			outgoingBtn.Importance = widget.LowImportance
 		default:
 
 		}
@@ -204,14 +197,14 @@ func Header(selectedDeviceBinding binding.String,
 		mode, _ := startListenerBinding.Get()
 		switch mode {
 		case 0:
-			sb.Disable()
-			stb.Disable()
+			startBtn.Disable()
+			stopBtn.Disable()
 		case 1:
-			sb.Disable()
-			stb.Enable()
+			startBtn.Disable()
+			stopBtn.Enable()
 		default:
-			sb.Enable()
-			stb.Disable()
+			startBtn.Enable()
+			stopBtn.Disable()
 		}
 	}))
 
@@ -221,16 +214,16 @@ func Header(selectedDeviceBinding binding.String,
 	}))
 
 	lbg := container.NewHBox(
-		ib,
-		ob,
-		cb,
+		incomingBtn,
+		outgoingBtn,
+		captureAllBtn,
 	)
 
 	rbg := container.NewHBox(
 		c,
-		sb,
-		stb,
-		bb,
+		startBtn,
+		stopBtn,
+		backBtn,
 	)
 
 	// Header

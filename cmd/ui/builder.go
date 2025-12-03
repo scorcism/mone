@@ -34,7 +34,7 @@ func BuildUI() {
 			}),
 		)
 		ok.SetSystemTrayMenu(m)
-		w.Resize(fyne.NewSize(800, 600))
+		w.Resize(fyne.NewSize(840, 600))
 	}
 
 	selectedDeviceBinding.AddListener(binding.NewDataListener(func() {

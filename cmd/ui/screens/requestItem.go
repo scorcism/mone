@@ -22,8 +22,6 @@ type RequestItem struct {
 	DstPort   string
 	Size      int
 	Metadata  gopacket.PacketMetadata
-
-	Container fyne.CanvasObject
 }
 
 func NewRequestItem(timestamp, proto, direction, src, srcPort, dst, dstPort string, size int, metadata gopacket.PacketMetadata) *RequestItem {
@@ -88,7 +86,7 @@ func (ri *RequestItem) ShowMetadataWindow() {
 
 	portAppInfo := widget.NewRichTextWithText(
 		fmt.Sprintf(
-			"Port app Info\n"+
+			"Application Using This Port\n"+
 				"Source: %v\n"+
 				"Destination: %v\n",
 			sourceAppInfo,
@@ -100,10 +98,11 @@ func (ri *RequestItem) ShowMetadataWindow() {
 		widget.NewAccordionItem("Full Metadata (Raw)", widget.NewLabel(fmt.Sprintf("%+v", meta))),
 	)
 
-	sourceWhoIsLbl := widget.NewLabelWithStyle("Source WHOIS Lookup", fyne.TextAlignCenter, fyne.TextStyle{Bold: true, Monospace: true})
-	destinationWhoIsLbl := widget.NewLabelWithStyle("Destination WHOIS Lookup", fyne.TextAlignCenter, fyne.TextStyle{Bold: true, Monospace: true})
+	sourceWhoIsLbl := widget.NewLabelWithStyle(fmt.Sprintf("Source [%s] WHOIS Lookup", ri.Src), fyne.TextAlignCenter, fyne.TextStyle{Bold: true, Monospace: true})
+	destinationWhoIsLbl := widget.NewLabelWithStyle(fmt.Sprintf("Destination [%s] WHOIS Lookup", ri.Dst), fyne.TextAlignCenter, fyne.TextStyle{Bold: true, Monospace: true})
 
 	go func() {
+
 		info, err := utils.PerformWhoisLookup(ri.Src)
 		infoDst, errDst := utils.PerformWhoisLookup(ri.Dst)
 
@@ -140,5 +139,6 @@ func (ri *RequestItem) ShowMetadataWindow() {
 
 	win.SetContent(scroll)
 	win.Resize(fyne.NewSize(400, 450))
+	win.SetFixedSize(true)
 	win.Show()
 }

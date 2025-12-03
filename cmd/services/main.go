@@ -10,7 +10,7 @@ import (
 	"github.com/scorcism/mone/cmd/types"
 )
 
-func LogPacketInfo(packet gopacket.Packet, localIps []net.IP) (string, string, string, string, string, string, string, int, gopacket.PacketMetadata) {
+func PacketInfo(packet gopacket.Packet, localIps []net.IP) (string, string, string, string, string, string, string, int, gopacket.PacketMetadata) {
 	netLayer := packet.NetworkLayer()
 	transLayer := packet.TransportLayer()
 
@@ -44,6 +44,22 @@ func GetLocalIps() []net.IP {
 	return localIPs
 }
 
+func GetLocalInterfaces() []types.LocalInterface {
+	interfs := []types.LocalInterface{}
+	devices, err := pcap.FindAllDevs()
+	if err != nil {
+		return nil
+	}
+
+	for _, device := range devices {
+		interfs = append(interfs, types.LocalInterface{
+			Name:        device.Name,
+			Description: device.Description,
+		})
+	}
+	return interfs
+}
+
 func getDirection(srcIP, dstIP string, localIps []net.IP) string {
 	if isLocalIP(srcIP, localIps) && !isLocalIP(dstIP, localIps) {
 		return "OUTGOING"
@@ -60,21 +76,4 @@ func isLocalIP(ipStr string, localIps []net.IP) bool {
 		return false
 	}
 	return slices.ContainsFunc(localIps, ip.Equal)
-}
-
-func GetLocalInterfaces() []types.LocalInterface {
-	interfs := []types.LocalInterface{}
-	devices, err := pcap.FindAllDevs()
-	if err != nil {
-		return nil
-	}
-
-	for _, device := range devices {
-		// fmt.Printf("%s :: %s\n", device.Name, device.Description)
-		interfs = append(interfs, types.LocalInterface{
-			Name:        device.Name,
-			Description: device.Description,
-		})
-	}
-	return interfs
 }

@@ -1,4 +1,4 @@
 
 build:
 	@echo Building mone ...
-	go build main.go
+	go -ldflags -H=windowsgui build main.go

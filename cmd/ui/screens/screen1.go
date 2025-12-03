@@ -8,7 +8,6 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
-	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
@@ -17,49 +16,34 @@ import (
 )
 
 func Screen1(win fyne.Window, selectedDeviceBinding binding.String) fyne.CanvasObject {
-	title := widget.NewLabel("Welcome to Mone!")
-	title.Alignment = fyne.TextAlignCenter
-	title.TextStyle.Bold = true
-	title.TextStyle.Monospace = true
-	device := ""
+	title := widget.NewLabelWithStyle("Welcome to Mone!", fyne.TextAlignCenter, fyne.TextStyle{Bold: true, Monospace: true})
+	reloadInterfacesBinding := binding.NewBool()
 
-	interfs := services.GetLocalInterfaces()
-	interfsDesc := []string{}
-	for _, interf := range interfs {
-		f := fmt.Sprintf("Device: %s :: Description: %s", interf.Name, interf.Description)
-		interfsDesc = append(interfsDesc, f)
-	}
-	radio := widget.NewRadioGroup(interfsDesc, func(value string) {
-		device = strings.Split(value, " :: ")[0][8:]
+	reloadBtn := widget.NewButtonWithIcon("Reload Interfaces", theme.ViewRefreshIcon(), func() {
+		val, _ := reloadInterfacesBinding.Get()
+		reloadInterfacesBinding.Set(!val)
 	})
-
-	confirmBtn := widget.NewButton("Confirm", func() {
-		if device == "" {
-			dialog.ShowError(fmt.Errorf("no device selected"), win)
-			return
-		}
-		selectedDeviceBinding.Set(device)
-	})
-
-	// More info btn
 	moreInfoBtn := widget.NewButtonWithIcon("", theme.InfoIcon(), func() {
 		AppInfoWindow()
 	})
-
 	exitBtn := widget.NewButton("Exit", func() {
 		win.Close()
 	})
 
-	confirmICont := container.NewHBox(
-		confirmBtn,
+	leftContent := container.NewHBox(
+		reloadBtn,
+	)
+	rightContent := container.NewHBox(
 		exitBtn,
 		moreInfoBtn,
 	)
 
+	btnContainer := container.NewHBox(leftContent, layout.NewSpacer(), rightContent)
+
 	bodyContent := container.NewVBox(
 		widget.NewLabel("Select your device type:"),
-		radio,
-		confirmICont,
+		handleInterfaceSelection(selectedDeviceBinding, reloadInterfacesBinding),
+		btnContainer,
 	)
 
 	mainContent := container.NewVBox(
@@ -68,6 +52,26 @@ func Screen1(win fyne.Window, selectedDeviceBinding binding.String) fyne.CanvasO
 	)
 
 	return container.New(layout.NewCenterLayout(), mainContent)
+}
+
+func handleInterfaceSelection(selectedDeviceBinding binding.String, reloadInterfacesBinding binding.Bool) *widget.RadioGroup {
+	radio := widget.NewRadioGroup([]string{}, func(value string) {
+		device := strings.Split(value, " :: ")[0][8:]
+		selectedDeviceBinding.Set(device)
+	})
+
+	reloadInterfacesBinding.AddListener(binding.NewDataListener(func() {
+		interfsDesc := []string{}
+		interfs := services.GetLocalInterfaces()
+		for _, interf := range interfs {
+			f := fmt.Sprintf("Device: %s :: Description: %s", interf.Name, interf.Description)
+			interfsDesc = append(interfsDesc, f)
+		}
+		radio.Options = interfsDesc
+		radio.Refresh()
+	}))
+
+	return radio
 }
 
 func AppInfoWindow() {
